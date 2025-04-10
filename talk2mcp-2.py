@@ -280,12 +280,12 @@ Your entire response should be a single line starting with either FUNCTION_CALL:
                         # Draw a rectangle
                         result = await session.call_tool(
                             "draw_rectangle",
-                            arguments={
-                                # "x1": 780,
-                                # "y1": 380,
-                                # "x2": 1140,
-                                # "y2": 700
-                            }
+                            # arguments={
+                            #     # "x1": 780,
+                            #     # "y1": 380,
+                            #     # "x2": 1140,
+                            #     # "y2": 700
+                            # }
                         )
                         print(result.content[0].text)
 
