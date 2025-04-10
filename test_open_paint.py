@@ -81,6 +81,7 @@ async def select_rectangle_tool() -> dict:
         return {"content": [{"type": "text", "text": f"Error selecting rectangle tool: {str(e)}"}]}
 
 async def draw_rectangle_with_tool() -> dict:
+
     """
     Draw a 400x200 rectangle at the center of the Paintbrush window using the rectangle tool.
     
@@ -93,6 +94,14 @@ async def draw_rectangle_with_tool() -> dict:
     span from (-935, 378) to (-535, 578).
     """
     try:
+        await reposition_window(window_index=1, left=-1470, top=0, width=1470, height=956, app_name="Paintbrush")
+        await reposition_window(window_index=2, left=-1470, top=0, width=1470, height=956, app_name="Paintbrush")
+        await asyncio.sleep(2)
+
+        # Select the rectangle tool from the Toolbox.
+        result_tool = await select_rectangle_tool()
+        print(result_tool)
+        await asyncio.sleep(2)
 
         bounds = await get_window_bounds( window_index=2)
         if not bounds or len(bounds) != 4:
@@ -106,12 +115,6 @@ async def draw_rectangle_with_tool() -> dict:
        
         center_x = -700
         center_y = 900
-
-        # For better results, first ensure the canvas is focused by clicking at its center.
-        # pyautogui.moveTo(center_x, center_y, duration=0.5)
-        # await asyncio.sleep(0.2)
-        # pyautogui.click()  # Focus the canvas
-        # await asyncio.sleep(0.5)
 
         # Define rectangle dimensions.
         rect_width, rect_height = 800, 400
@@ -239,6 +242,18 @@ async def paste_and_place_text(provided_text: str) -> dict:
     the paste and return commands.
     """
     try:
+        # selects text tool
+        result_text_tool = await select_text_tool()
+        print(result_text_tool)
+        await asyncio.sleep(2)
+        
+        # double clicks on the text entry area
+        text_entry_x, text_entry_y = -700, 900
+        pyautogui.moveTo(text_entry_x, text_entry_y, duration=0.5)
+        await asyncio.sleep(0.2)
+        pyautogui.doubleClick()
+        await asyncio.sleep(0.5)
+
         # Copy the provided text to the clipboard using pbcopy.
         cmd = "echo " + shlex.quote(provided_text) + " | pbcopy"
         subprocess.run(cmd, shell=True, check=True)
@@ -289,31 +304,10 @@ if __name__ == "__main__":
 
         # Allow time for windows to settle.
         await asyncio.sleep(3)
-        
-        # Optionally, reposition individual windows if needed. For example:
-        # Reposition Toolbox (window 1) and Canvas (window 2) to your extended display.
-        await reposition_window(window_index=1, left=-1470, top=0, width=1470, height=956, app_name="Paintbrush")
-        await reposition_window(window_index=2, left=-1470, top=0, width=1470, height=956, app_name="Paintbrush")
-        await asyncio.sleep(2)
 
-        # Select the rectangle tool from the Toolbox.
-        result_tool = await select_rectangle_tool()
-        print(result_tool)
-        await asyncio.sleep(2)
-        
         # Draw the rectangle on the Canvas.
         result_draw = await draw_rectangle_with_tool()
         print(result_draw)
-
-        result_text_tool = await select_text_tool()
-        print(result_text_tool)
-        await asyncio.sleep(2)
-        
-        text_entry_x, text_entry_y = -700, 900
-        pyautogui.moveTo(text_entry_x, text_entry_y, duration=0.5)
-        await asyncio.sleep(0.2)
-        pyautogui.doubleClick()
-        await asyncio.sleep(0.5)
         
         # Use the command prompt via AppleScript to input your text and click "Place".
         provided_text = "Hello, Paintbrush!"

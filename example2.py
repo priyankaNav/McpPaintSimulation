@@ -9,14 +9,12 @@ import sys
 from fastapi import FastAPI
 from pydantic import BaseModel
 import subprocess
-import pyautogui
-import Quartz
-import time
-import os
-import psutil
 import asyncio
-import ctypes
-import pdb
+import asyncio
+import subprocess
+import pyautogui
+import re
+import shlex
 # instantiate an MCP server client
 mcp = FastMCP("Calculator")
 rectangle_info = {
@@ -163,383 +161,60 @@ def fibonacci_numbers(n: int) -> list:
     return fib_sequence[:n]
 
 
-# @mcp.tool()
-# async def draw_rectangle(x1: int, y1: int, x2: int, y2: int) -> dict:
-#     """Draw a rectangle in Paint from (x1,y1) to (x2,y2)"""
-#     global paint_app
-#     try:
-#         if not paint_app:
-#             return {
-#                 "content": [
-#                     TextContent(
-#                         type="text",
-#                         text="Paint is not open. Please call open_paint first."
-#                     )
-#                 ]
-#             }
-        
-#         # Get the Paint window
-#         paint_window = paint_app.window(class_name='MSPaintApp')
-        
-#         # Get primary monitor width to adjust coordinates
-#         primary_width = GetSystemMetrics(0)
-        
-#         # Ensure Paint window is active
-#         if not paint_window.has_focus():
-#             paint_window.set_focus()
-#             time.sleep(0.2)
-        
-#         # Click on the Rectangle tool using the correct coordinates for secondary screen
-#         paint_window.click_input(coords=(530, 82 ))
-#         time.sleep(0.2)
-        
-#         # Get the canvas area
-#         canvas = paint_window.child_window(class_name='MSPaintView')
-        
-#         # Draw rectangle - coordinates should already be relative to the Paint window
-#         # No need to add primary_width since we're clicking within the Paint window
-#         canvas.press_mouse_input(coords=(x1+2560, y1))
-#         canvas.move_mouse_input(coords=(x2+2560, y2))
-#         canvas.release_mouse_input(coords=(x2+2560, y2))
-        
-#         return {
-#             "content": [
-#                 TextContent(
-#                     type="text",
-#                     text=f"Rectangle drawn from ({x1},{y1}) to ({x2},{y2})"
-#                 )
-#             ]
-#         }
-#     except Exception as e:
-#         return {
-#             "content": [
-#                 TextContent(
-#                     type="text",
-#                     text=f"Error drawing rectangle: {str(e)}"
-#                 )
-#             ]
-#         }
-
-# @mcp.tool()
-# async def add_text_in_paint(text: str) -> dict:
-#     """Add text in Paint"""
-#     global paint_app
-#     try:
-#         if not paint_app:
-#             return {
-#                 "content": [
-#                     TextContent(
-#                         type="text",
-#                         text="Paint is not open. Please call open_paint first."
-#                     )
-#                 ]
-#             }
-        
-#         # Get the Paint window
-#         paint_window = paint_app.window(class_name='MSPaintApp')
-        
-#         # Ensure Paint window is active
-#         if not paint_window.has_focus():
-#             paint_window.set_focus()
-#             time.sleep(0.5)
-        
-#         # Click on the Rectangle tool
-#         paint_window.click_input(coords=(528, 92))
-#         time.sleep(0.5)
-        
-#         # Get the canvas area
-#         canvas = paint_window.child_window(class_name='MSPaintView')
-        
-#         # Select text tool using keyboard shortcuts
-#         paint_window.type_keys('t')
-#         time.sleep(0.5)
-#         paint_window.type_keys('x')
-#         time.sleep(0.5)
-        
-#         # Click where to start typing
-#         canvas.click_input(coords=(810, 533))
-#         time.sleep(0.5)
-        
-#         # Type the text passed from client
-#         paint_window.type_keys(text)
-#         time.sleep(0.5)
-        
-#         # Click to exit text mode
-#         canvas.click_input(coords=(1050, 800))
-        
-#         return {
-#             "content": [
-#                 TextContent(
-#                     type="text",
-#                     text=f"Text:'{text}' added successfully"
-#                 )
-#             ]
-#         }
-#     except Exception as e:
-#         return {
-#             "content": [
-#                 TextContent(
-#                     type="text",
-#                     text=f"Error: {str(e)}"
-#                 )
-#             ]
-#         }
-
-# @mcp.tool()
-# async def open_paint() -> dict:
-#     """Open Microsoft Paint maximized on secondary monitor"""
-#     global paint_app
-#     try:
-#         paint_app = Application().start('mspaint.exe')
-#         time.sleep(0.2)
-        
-#         # Get the Paint window
-#         paint_window = paint_app.window(class_name='MSPaintApp')
-        
-#         # Get primary monitor width
-#         primary_width = GetSystemMetrics(0)
-        
-#         # First move to secondary monitor without specifying size
-#         win32gui.SetWindowPos(
-#             paint_window.handle,
-#             win32con.HWND_TOP,
-#             primary_width + 1, 0,  # Position it on secondary monitor
-#             0, 0,  # Let Windows handle the size
-#             win32con.SWP_NOSIZE  # Don't change the size
-#         )
-        
-#         # Now maximize the window
-#         win32gui.ShowWindow(paint_window.handle, win32con.SW_MAXIMIZE)
-#         time.sleep(0.2)
-        
-#         return {
-#             "content": [
-#                 TextContent(
-#                     type="text",
-#                     text="Paint opened successfully on secondary monitor and maximized"
-#                 )
-#             ]
-#         }
-#     except Exception as e:
-#         return {
-#             "content": [
-#                 TextContent(
-#                     type="text",
-#                     text=f"Error opening Paint: {str(e)}"
-#                 )
-#             ]
-#         }
-# DEFINE RESOURCES
-
 
 # Function to open Paintbrush and move it to secondary monitor and maximize
 @mcp.tool()
-async def open_paint():
-    global paint_app
+async def open_paint() -> dict:
+    """
+    Open Paintbrush on macOS, move all its windows (toolbox and main canvas) to
+    the extended display (laptop: 1470x956) and trigger full-screen mode.
+    Assumes the extended display is positioned to the left of your main monitor.
+    """
     try:
-        print("\n=== Starting open_paint debug ===")
-        
-        # Debug: Check Paintbrush installation
-        paintbrush_path = "/Applications/Paintbrush.app"
-        print(f"Checking Paintbrush at: {paintbrush_path}")
-        if os.path.exists(paintbrush_path):
-            print("✓ Paintbrush.app found")
-        else:
-            print("✗ Paintbrush.app not found")
-            return {
-                "content": [
-                    TextContent(
-                        type="text",
-                        text="Paintbrush.app not found in /Applications"
-                    )
-                ]
-            }
+        # Launch Paintbrush with the macOS 'open' command.
+        subprocess.Popen(["open", "-a", "Paintbrush"])
+        await asyncio.sleep(2.0)  # Allow extra time for Paintbrush to fully launch
 
-        # Debug: Check display setup
-        print("\nChecking display setup...")
-        maxDisplays = 16
-        CGDirectDisplayIDArrayType = Quartz.CGDirectDisplayID * maxDisplays
-        activeDisplays = CGDirectDisplayIDArrayType()
-        displayCount = ctypes.c_uint32()
-
-        status = Quartz.CGGetActiveDisplayList(
-            maxDisplays,
-            activeDisplays,
-            ctypes.byref(displayCount)
-        )
-        pdb.set_trace()
-        print(f"Display status: {status}")
-        print(f"Number of displays: {displayCount.value}")
-
-        if status != 0 or displayCount.value < 2:
-            print("✗ No extended display found")
-            return {
-                "content": [
-                    TextContent(
-                        type="text",
-                        text="Extended display not found. Please connect a second monitor."
-                    )
-                ]
-            }
-
-        # Debug: Get display metrics
-        print("\nGetting display metrics...")
-        primary_display = activeDisplays[0]
-        secondary_display = activeDisplays[1]
-        
-        primary_width = int(Quartz.CGDisplayPixelsWide(primary_display))
-        secondary_x = int(Quartz.CGDisplayBounds(secondary_display).origin.x)
-        secondary_y = int(Quartz.CGDisplayBounds(secondary_display).origin.y)
-        
-        print(f"Primary display width: {primary_width}")
-        print(f"Secondary display position: ({secondary_x}, {secondary_y})")
-
-        # Debug: Launch Paintbrush
-        print("\nLaunching Paintbrush...")
-        try:
-            # Method 1: Direct launch
-            print("Trying direct launch...")
-            subprocess.run(["open", paintbrush_path], check=True)
-            await asyncio.sleep(3)
-            
-            if is_paintbrush_running():
-                print("✓ Paintbrush launched successfully")
-            else:
-                print("✗ Direct launch failed, trying NSWorkspace...")
-                # Method 2: NSWorkspace
-                workspace = Quartz.NSWorkspace.sharedWorkspace()
-                app_url = Quartz.NSURL.fileURLWithPath_(paintbrush_path)
-                workspace.openURL_(app_url)
-                await asyncio.sleep(3)
-                
-                if is_paintbrush_running():
-                    print("✓ Paintbrush launched with NSWorkspace")
-                else:
-                    print("✗ NSWorkspace launch failed")
-                    return {
-                        "content": [
-                            TextContent(
-                                type="text",
-                                text="Failed to launch Paintbrush"
-                            )
-                        ]
-                    }
-
-            # Debug: Position and maximize
-            print("\nPositioning and maximizing window...")
-            position_script = f'''
-            tell application "System Events"
-                tell process "Paintbrush"
-                    set frontmost to true
-                    delay 1
-                    if exists window 1 then
-                        set position of window 1 to {{{secondary_x}, {secondary_y}}}
-                        delay 1
-                        tell window 1
-                            click button 1
-                        end tell
-                    end if
-                end tell
+        # AppleScript that iterates over all windows of Paintbrush,
+        # sets each window’s position and size, and then simulates the full screen shortcut.
+        applescript = '''
+        tell application "System Events"
+            tell process "Paintbrush"
+                set frontmost to true
+                delay 0.5
+                set winList to windows
+                repeat with w in winList
+                    try
+                        set position of w to {-1470, 0}
+                        set size of w to {1470, 956}
+                    end try
+                end repeat
+                delay 0.5
+                -- Attempt to trigger full screen mode using the keyboard shortcut.
+                keystroke "f" using {control down, command down}
             end tell
-            '''
-            
-            print("Executing position script...")
-            subprocess.run(["osascript", "-e", position_script], check=True)
-            print("✓ Position script executed")
+        end tell
+        '''
+        subprocess.Popen(["osascript", "-e", applescript])
+        await asyncio.sleep(1.0)  # Allow time for full screen action
 
-            return {
-                "content": [
-                    TextContent(
-                        type="text",
-                        text="Paintbrush opened and positioned on extended display"
-                    )
-                ]
-            }
-
-        except subprocess.CalledProcessError as e:
-            print(f"✗ Script error: {e}")
-            return {
-                "content": [
-                    TextContent(
-                        type="text",
-                        text=f"Error executing script: {str(e)}"
-                    )
-                ]
-            }
-
-    except Exception as e:
-        print(f"✗ Unexpected error: {e}")
         return {
             "content": [
-                TextContent(
-                    type="text",
-                    text=f"Error: {str(e)}"
-                )
+                {"type": "text", "text": "Paintbrush windows repositioned and maximized on extended display."}
             ]
         }
-    finally:
-        print("=== End of open_paint debug ===\n")
+    except Exception as e:
+        return {
+            "content": [
+                {"type": "text", "text": f"Error opening Paintbrush: {str(e)}"}
+            ]
+        }
 
-# Helper function to check if Paintbrush is running
-def is_paintbrush_running():
-    for proc in psutil.process_iter(['name']):
-        if proc.info['name'] == "Paintbrush":
-            return True
-    return False
 
 
 # Function to draw rectangle in Paintbrush
 @mcp.tool()
-async def draw_rectangle() -> dict:
-    try:
-        if not is_paintbrush_running():
-             return {
-                "content": [
-                    TextContent(
-                        type="text",
-                        text="Paint is not open. Please call open_paint first."
-                    )
-                ]
-            }
 
-        maxDisplays = 16
-        activeDisplays = (Quartz.CGDirectDisplayID * maxDisplays)()
-        displayCount = Quartz.uint32_t()
-        Quartz.CGGetActiveDisplayList(maxDisplays, activeDisplays, Quartz.pointer(displayCount))
-
-        if displayCount.value < 2:
-            raise Exception("No second monitor detected.")
-
-        second_display = activeDisplays[1]
-        x_offset = Quartz.CGDisplayBounds(second_display).origin.x
-        y_offset = Quartz.CGDisplayBounds(second_display).origin.y
-
-        global start_x, start_y, rect_width, rect_height
-        rectangle_info['start_x']  = x_offset + 200
-        rectangle_info['start_y'] = y_offset + 200
-        rectangle_info['rect_width'] = 300
-        rectangle_info['rect_height'] = 200
-
-        pyautogui.moveTo(start_x, start_y)
-        pyautogui.mouseDown()
-        pyautogui.moveRel(rect_width, 0)
-        pyautogui.moveRel(0, rect_height)
-        pyautogui.moveRel(-rect_width, 0)
-        pyautogui.moveRel(0, -rect_height)
-        pyautogui.mouseUp()
-
-        return {
-            "content": [
-                TextContent(
-                    type="text",
-                    text=f"Rectangle drawn from ({rectangle_info['start_x']},{rectangle_info['start_y']}))"
-                )
-            ]
-        }
-
-    except Exception as e:
-        print(f"Error in draw_rectangle: {e}")
-        return {"status": "error", "message": str(e)}
 
 @mcp.tool()
 # Function to add text to the center of the rectangle
