@@ -16,7 +16,7 @@ import os
 import psutil
 import asyncio
 import ctypes
-
+import pdb
 # instantiate an MCP server client
 mcp = FastMCP("Calculator")
 rectangle_info = {
@@ -335,50 +335,152 @@ def fibonacci_numbers(n: int) -> list:
 # Function to open Paintbrush and move it to secondary monitor and maximize
 @mcp.tool()
 async def open_paint():
+    global paint_app
     try:
+        print("\n=== Starting open_paint debug ===")
+        
+        # Debug: Check Paintbrush installation
         paintbrush_path = "/Applications/Paintbrush.app"
-        subprocess.Popen(["open", paintbrush_path])
-        await asyncio.sleep(3)  # wait for Paintbrush to fully load
+        print(f"Checking Paintbrush at: {paintbrush_path}")
+        if os.path.exists(paintbrush_path):
+            print("✓ Paintbrush.app found")
+        else:
+            print("✗ Paintbrush.app not found")
+            return {
+                "content": [
+                    TextContent(
+                        type="text",
+                        text="Paintbrush.app not found in /Applications"
+                    )
+                ]
+            }
 
+        # Debug: Check display setup
+        print("\nChecking display setup...")
         maxDisplays = 16
-        # activeDisplays = (Quartz.CGDirectDisplayID * maxDisplays)()
-        # displayCount = Quartz.uint32_t()
-        # Quartz.CGGetActiveDisplayList(maxDisplays, activeDisplays, Quartz.pointer(displayCount))
-        activeDisplays = (Quartz.CGDirectDisplayID * maxDisplays)()
-        displayCount = Quartz.uint32_t()
+        CGDirectDisplayIDArrayType = Quartz.CGDirectDisplayID * maxDisplays
+        activeDisplays = CGDirectDisplayIDArrayType()
+        displayCount = ctypes.c_uint32()
 
-        Quartz.CGGetActiveDisplayList(
+        status = Quartz.CGGetActiveDisplayList(
             maxDisplays,
             activeDisplays,
-            Quartz.pointer(displayCount))
+            ctypes.byref(displayCount)
+        )
+        pdb.set_trace()
+        print(f"Display status: {status}")
+        print(f"Number of displays: {displayCount.value}")
 
-        if displayCount.value < 2:
-            raise Exception("No second monitor detected.")
+        if status != 0 or displayCount.value < 2:
+            print("✗ No extended display found")
+            return {
+                "content": [
+                    TextContent(
+                        type="text",
+                        text="Extended display not found. Please connect a second monitor."
+                    )
+                ]
+            }
 
-        second_display = activeDisplays[1]
-        x = Quartz.CGDisplayBounds(second_display).origin.x
-        y = Quartz.CGDisplayBounds(second_display).origin.y
-        width = Quartz.CGDisplayPixelsWide(second_display)
-        height = Quartz.CGDisplayPixelsHigh(second_display)
+        # Debug: Get display metrics
+        print("\nGetting display metrics...")
+        primary_display = activeDisplays[0]
+        secondary_display = activeDisplays[1]
+        
+        primary_width = int(Quartz.CGDisplayPixelsWide(primary_display))
+        secondary_x = int(Quartz.CGDisplayBounds(secondary_display).origin.x)
+        secondary_y = int(Quartz.CGDisplayBounds(secondary_display).origin.y)
+        
+        print(f"Primary display width: {primary_width}")
+        print(f"Secondary display position: ({secondary_x}, {secondary_y})")
 
-        # Use AppleScript to move and resize Paintbrush window
-        applescript = f'''
-        tell application "System Events"
-            tell application process "Paintbrush"
-                set frontmost to true
-                delay 1
-                set the position of the front window to {{{x}, {y}}}
-                set the size of the front window to {{{width}, {height}}}
+        # Debug: Launch Paintbrush
+        print("\nLaunching Paintbrush...")
+        try:
+            # Method 1: Direct launch
+            print("Trying direct launch...")
+            subprocess.run(["open", paintbrush_path], check=True)
+            await asyncio.sleep(3)
+            
+            if is_paintbrush_running():
+                print("✓ Paintbrush launched successfully")
+            else:
+                print("✗ Direct launch failed, trying NSWorkspace...")
+                # Method 2: NSWorkspace
+                workspace = Quartz.NSWorkspace.sharedWorkspace()
+                app_url = Quartz.NSURL.fileURLWithPath_(paintbrush_path)
+                workspace.openURL_(app_url)
+                await asyncio.sleep(3)
+                
+                if is_paintbrush_running():
+                    print("✓ Paintbrush launched with NSWorkspace")
+                else:
+                    print("✗ NSWorkspace launch failed")
+                    return {
+                        "content": [
+                            TextContent(
+                                type="text",
+                                text="Failed to launch Paintbrush"
+                            )
+                        ]
+                    }
+
+            # Debug: Position and maximize
+            print("\nPositioning and maximizing window...")
+            position_script = f'''
+            tell application "System Events"
+                tell process "Paintbrush"
+                    set frontmost to true
+                    delay 1
+                    if exists window 1 then
+                        set position of window 1 to {{{secondary_x}, {secondary_y}}}
+                        delay 1
+                        tell window 1
+                            click button 1
+                        end tell
+                    end if
+                end tell
             end tell
-        end tell
-        '''
-        subprocess.call(["osascript", "-e", applescript])
-        await asyncio.sleep(1)
+            '''
+            
+            print("Executing position script...")
+            subprocess.run(["osascript", "-e", position_script], check=True)
+            print("✓ Position script executed")
+
+            return {
+                "content": [
+                    TextContent(
+                        type="text",
+                        text="Paintbrush opened and positioned on extended display"
+                    )
+                ]
+            }
+
+        except subprocess.CalledProcessError as e:
+            print(f"✗ Script error: {e}")
+            return {
+                "content": [
+                    TextContent(
+                        type="text",
+                        text=f"Error executing script: {str(e)}"
+                    )
+                ]
+            }
 
     except Exception as e:
-        print(f"Error in open_and_move_paintbrush: {e}")
-        raise
-    
+        print(f"✗ Unexpected error: {e}")
+        return {
+            "content": [
+                TextContent(
+                    type="text",
+                    text=f"Error: {str(e)}"
+                )
+            ]
+        }
+    finally:
+        print("=== End of open_paint debug ===\n")
+
+# Helper function to check if Paintbrush is running
 def is_paintbrush_running():
     for proc in psutil.process_iter(['name']):
         if proc.info['name'] == "Paintbrush":
