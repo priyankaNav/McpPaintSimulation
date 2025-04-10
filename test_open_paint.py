@@ -2,6 +2,7 @@ import asyncio
 import subprocess
 import pyautogui
 import re
+import shlex
 
 async def open_paint() -> dict:
     """
@@ -107,10 +108,10 @@ async def draw_rectangle_with_tool() -> dict:
         center_y = 900
 
         # For better results, first ensure the canvas is focused by clicking at its center.
-        pyautogui.moveTo(center_x, center_y, duration=0.5)
-        await asyncio.sleep(0.2)
-        pyautogui.click()  # Focus the canvas
-        await asyncio.sleep(0.5)
+        # pyautogui.moveTo(center_x, center_y, duration=0.5)
+        # await asyncio.sleep(0.2)
+        # pyautogui.click()  # Focus the canvas
+        # await asyncio.sleep(0.5)
 
         # Define rectangle dimensions.
         rect_width, rect_height = 800, 400
@@ -139,16 +140,16 @@ async def draw_rectangle_with_tool() -> dict:
         pyautogui.mouseUp()  # Finish drawing
         await asyncio.sleep(0.2)
        
-        while True:
-            # Get the current mouse position
-            x, y = pyautogui.position()
+        # while True:
+        #     # Get the current mouse position
+        #     x, y = pyautogui.position()
 
-            # Check for mouse click (this checks for left-click)
-            if pyautogui.mouseInfo() == "left":
-                print(f"Mouse clicked at coordinates: ({x}, {y})")
-                break
+        #     # Check for mouse click (this checks for left-click)
+        #     if pyautogui.mouseInfo() == "left":
+        #         print(f"Mouse clicked at coordinates: ({x}, {y})")
+        #         break
 
-        await asyncio.sleep(0.1)  # Add a small delay to avoid excessive CPU usage
+        # await asyncio.sleep(0.1)  # Add a small delay to avoid excessive CPU usage
 
         return {"content": [{"type": "text", "text": "Rectangle drawn at the center of the Paintbrush window."}]}
     except Exception as e:
@@ -209,25 +210,80 @@ async def get_window_bounds(window_index: int, app_name="Paintbrush") -> list:
         return []
 
 
+async def select_text_tool() -> dict:
+    """
+    Selects the Text tool from the toolbox.
+    Adjust these coordinates until you reliably select the Text tool.
+    """
+    try:
+        # Example global coordinate for the Text tool.
+        # (These values should be adjusted based on your Paintbrush UI.)
+        text_tool_x, text_tool_y = -1420, 720  # Adjust as needed.
+        pyautogui.moveTo(text_tool_x, text_tool_y, duration=0.5)
+        await asyncio.sleep(0.2)
+        pyautogui.click()
+        await asyncio.sleep(0.5)
+        return {"content": [{"type": "text", "text": "Text tool selected."}]}
+    except Exception as e:
+        return {"content": [{"type": "text", "text": f"Error selecting text tool: {str(e)}"}]}
+
+
+async def paste_and_place_text(provided_text: str) -> dict:
+    """
+    Copies the provided text to the clipboard, simulates pasting via Command+V,
+    then simulates pressing the Return key to "Place" the text, and finally
+    clicks at the center of the rectangle (assumed at given coordinates) so that
+    the placed text is centered.
+    
+    This method bypasses interacting with a popup text dialog by directly issuing
+    the paste and return commands.
+    """
+    try:
+        # Copy the provided text to the clipboard using pbcopy.
+        cmd = "echo " + shlex.quote(provided_text) + " | pbcopy"
+        subprocess.run(cmd, shell=True, check=True)
+        await asyncio.sleep(0.3)
+        
+        # Activate Paintbrush (assumed to be frontmost) and paste the text.
+        # This simulates pressing Command+V.
+        pyautogui.hotkey("command", "v")
+        await asyncio.sleep(0.3)
+        place_x, place_y = -610, 1006
+        pyautogui.moveTo(place_x, place_y, duration=0.5)
+        await asyncio.sleep(0.3)
+        pyautogui.click()
+        await asyncio.sleep(0.3)
+
+        center_x, center_y = -700, 900  # Adjust based on your actual rectangle center.
+        pyautogui.moveTo(center_x, center_y, duration=0.5)
+        await asyncio.sleep(0.3)
+        pyautogui.click()
+        await asyncio.sleep(0.3)
+
+        # while True:
+        #     # Get the current mouse position
+        #     x, y = pyautogui.position()
+
+        #     # Check for mouse click (this checks for left-click)
+        #     if pyautogui.mouseInfo() == "left":
+        #         print(f"Mouse clicked at coordinates: ({x}, {y})")
+        #         break
+
+        # await asyncio.sleep(0.1)  # Add a small delay to avoid excessive CPU usage
+        return {"content": [{"type": "text", "text": f"Text '{provided_text}' placed inside the rectangle."}]}
+
+
+            # return {"content": [{"type": "text", "text": f"Error clicking Place button: {stderr.decode().strip()}"}]}
+
+            
+       
+    except Exception as e:
+        return {"content": [{"type": "text", "text": f"Error in paste_and_place_text: {str(e)}"}]}
 
 # Example usage:
 if __name__ == "__main__":
     async def main():
-        # result_open = await open_paint()
-        # print(result_open)
-        
-        # # Wait for the window to reposition.
-        # await asyncio.sleep(3)
-        
-        # result_tool = await select_rectangle_tool()
-        # print(result_tool)
-        
-        # # Wait a moment for the tool selection to settle.
-        # await asyncio.sleep(2)
-        
-        # result_draw = await draw_rectangle_with_tool()
-        # print(result_draw)
-
+      
         result_open = await open_paint()
         print(result_open)
 
@@ -249,5 +305,18 @@ if __name__ == "__main__":
         result_draw = await draw_rectangle_with_tool()
         print(result_draw)
 
+        result_text_tool = await select_text_tool()
+        print(result_text_tool)
+        await asyncio.sleep(2)
         
+        text_entry_x, text_entry_y = -700, 900
+        pyautogui.moveTo(text_entry_x, text_entry_y, duration=0.5)
+        await asyncio.sleep(0.2)
+        pyautogui.doubleClick()
+        await asyncio.sleep(0.5)
+        
+        # Use the command prompt via AppleScript to input your text and click "Place".
+        provided_text = "Hello, Paintbrush!"
+        result_place_text = await paste_and_place_text(provided_text)
+        print(result_place_text)
     asyncio.run(main())
