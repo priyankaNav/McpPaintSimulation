@@ -15,14 +15,10 @@ import subprocess
 import pyautogui
 import re
 import shlex
+import gmailClient
 # instantiate an MCP server client
 mcp = FastMCP("Calculator")
-rectangle_info = {
-    'start_x': None,
-    'start_y': None,
-    'rect_width': None,
-    'rect_height': None
-}
+
 # DEFINE TOOLS
 
 #addition tool
@@ -427,13 +423,13 @@ async def add_text_in_paint(text: str) -> dict:
         # This simulates pressing Command+V.
         pyautogui.hotkey("command", "v")
         await asyncio.sleep(0.3)
-        place_x, place_y = -615, 1055
+        place_x, place_y = -620, 1054
         pyautogui.moveTo(place_x, place_y, duration=0.5)
         await asyncio.sleep(0.3)
         pyautogui.click()
         await asyncio.sleep(0.3)
 
-        center_x, center_y = -700, 900  # Adjust based on your actual rectangle center.
+        center_x, center_y = -800, 900  # Adjust based on your actual rectangle center.
         pyautogui.moveTo(center_x, center_y, duration=0.5)
         await asyncio.sleep(0.3)
         pyautogui.click()
@@ -458,6 +454,18 @@ async def add_text_in_paint(text: str) -> dict:
        
     except Exception as e:
         return {"content": [{"type": "text", "text": f"Error in paste_and_place_text: {str(e)}"}]}
+
+
+
+
+@mcp.tool()
+async def gmail_send(to:str, subject:str, message:str):
+    """Send an email using the Gmail client"""
+    gmail_client = await gmailClient.GmailClient().create()
+    if not to or not subject  or not message:
+        return {"status": "error", "error": "Missing required parameters: 'to', 'subject', 'message'"}
+    # Call the Gmail client to send the email
+    return await gmail_client.send_email(to, subject, message)
 
 
 # Add a dynamic greeting resource

@@ -263,26 +263,26 @@ async def paste_and_place_text(provided_text: str) -> dict:
         # This simulates pressing Command+V.
         pyautogui.hotkey("command", "v")
         await asyncio.sleep(0.3)
-        place_x, place_y = -610, 1006
+        place_x, place_y = -620, 1054
         pyautogui.moveTo(place_x, place_y, duration=0.5)
         await asyncio.sleep(0.3)
         pyautogui.click()
         await asyncio.sleep(0.3)
 
-        center_x, center_y = -700, 900  # Adjust based on your actual rectangle center.
+        center_x, center_y = -800, 900  # Adjust based on your actual rectangle center.
         pyautogui.moveTo(center_x, center_y, duration=0.5)
         await asyncio.sleep(0.3)
         pyautogui.click()
         await asyncio.sleep(0.3)
 
-        # while True:
-        #     # Get the current mouse position
-        #     x, y = pyautogui.position()
+        while True:
+            # Get the current mouse position
+            x, y = pyautogui.position()
 
-        #     # Check for mouse click (this checks for left-click)
-        #     if pyautogui.mouseInfo() == "left":
-        #         print(f"Mouse clicked at coordinates: ({x}, {y})")
-        #         break
+            # Check for mouse click (this checks for left-click)
+            if pyautogui.mouseInfo() == "left":
+                print(f"Mouse clicked at coordinates: ({x}, {y})")
+                break
 
         # await asyncio.sleep(0.1)  # Add a small delay to avoid excessive CPU usage
         return {"content": [{"type": "text", "text": f"Text '{provided_text}' placed inside the rectangle."}]}
