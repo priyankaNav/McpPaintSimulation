@@ -62,7 +62,7 @@ async def main():
         print("Establishing connection to MCP server...")
         server_params = StdioServerParameters(
             command="python",
-            args=["example2.py"]
+            args=["mcp-server.py"]
         )
 
         async with stdio_client(server_params) as (read, write):
@@ -330,7 +330,7 @@ async def mainWithEmail():
         print("Establishing connection to MCP server...")
         server_params = StdioServerParameters(
             command="python",
-            args=["example2.py"]
+            args=["mcp-server.py"]
         )
 
         async with stdio_client(server_params) as (read, write):
