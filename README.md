@@ -1,13 +1,13 @@
 # MCP Paint
 
-A powerful paint application with integrated Gmail functionality, built using the Mission Control Protocol (MCP) framework.
+A powerful paint application simulation with integrated Gmail functionality, built using the Model Context Protocol (MCP) framework. This project uses the Paintbrush application on macOS to simulate a paint environment.
 
 ## Features
 
 ### Paint Tools
-- **Rectangle Tool**: Draw rectangles on the canvas
-- **Text Tool**: Add text to your drawings
-- **Window Management**: Automatically positions and maximizes Paintbrush windows on extended displays
+- **Rectangle Tool**: Draw rectangles on the Paintbrush canvas
+- **Text Tool**: Add text to your Paintbrush drawings
+- **Window Management**: Automatically positions and maximizes Paintbrush windows on extended displays using applescript and PyAutoGUI
 
 ### Gmail Integration
 - Send emails directly from the application
@@ -27,7 +27,8 @@ A powerful paint application with integrated Gmail functionality, built using th
    ```
    pip install -r requirements.txt
    ```
-3. Set up Gmail API credentials:
+3. Install Paintbrush application on your macOS system
+4. Set up Gmail API credentials:
    - Create a project in Google Cloud Console
    - Enable the Gmail API
    - Create OAuth 2.0 credentials
@@ -41,6 +42,8 @@ For development mode:
 ```
 python talk2mcp-2.py dev
 ```
+
+The application will automatically launch Paintbrush, position its windows, and prepare the environment for you to use the paint tools.
 
 ### Sending Emails
 
@@ -62,4 +65,9 @@ The application is built using:
 - **Gmail API**: For email functionality
 - **AppleScript**: For window management on macOS
 - **PyAutoGUI**: For UI automation
+- **Paintbrush**: Used as the simulation environment for paint operations
+
+## Note
+
+This project simulates a paint application by controlling the Paintbrush application on macOS. It does not create its own paint interface but rather automates and extends the functionality of the existing Paintbrush application.
 
